@@ -1,3 +1,7 @@
+/**
+ * This code will compare the values from Google file and Looker file to generate the output for mismatch records and mismatch keys.
+ */
+
 package ClCompare.comparision_xcl;
 
 import java.io.File;
@@ -5,311 +9,249 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.poi.hpsf.Array;
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.IndexedColors;
-import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-/**
- * Hello world!
- *
- */
 public class App {
-		static Boolean check = false;
-		
-		//Change column number whatever you want to take data
-		public static int columnNumForFirst = 0;
-		public static int columnNumForSecond = 0;
-		public static int columnNum2ForFirst = 1;
-		public static int columnNum2ForSecond = 1;
+	static Boolean check = false;
 
-		public static void main(String args[]) throws IOException, ParseException {
+	//Change column number whatever you want to take data
+	public static void main(String args[]) throws IOException, ParseException {
 
-			try {
-				//ArrayList arr3 = new ArrayList();
-				List<String> arr3 = new ArrayList<String>();
-				ArrayList<String> arr4 = new ArrayList<String>(50000);
+		//Below List of array will capture the mismatch records and put it in output excel sheet.
+		List<String> outputArray = new ArrayList<String>();
+		outputArray.add("*************Mismatched records******************");
 
-				String file1 ="C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Google - 26K.xlsx";
-
-				String file2 = "C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Looker - 26K.xlsx";
-
-				Map<String, String> mapArr1 = findColumn(file1);
-				Map<String, String> mapArr2 = findColumn(file2);
-				//Map<String, List> arr1 = StoreArraysToHashMap(file1,columnNumForFirst);
-				//Map<String, List> arr2 = StoreArraysToHashMap(file2,columnNumForFirst);
-
+		//Below List of array will capture the mismatch primary keys only and put it in output excel sheet.
+		List<String> outputArrayForKeyOnly = new ArrayList<String>();
+		outputArrayForKeyOnly.add("*************Key present in google file but not in Looker file******************");
 				
-					Set<String> keysarr1 = mapArr1.keySet();
-					Set<String> keysarr2 = mapArr2.keySet();
-					Collection<String> valuesarr1 = mapArr1.values();
-					Collection<String> valuesarr2 = mapArr2.values();
-					Iterator i = keysarr1.iterator();
-					Object[] ka1 =keysarr1.toArray();
-					Object[] ka2 =keysarr2.toArray();
-					int k =0;
-					int l =0;
-					if(ka1.length == ka2.length) {
-					for (int m=0;m<ka1.length;m++)
+		String file1 ="C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Google - 26K.xlsx";
+		String file2 = "C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Looker - 26K.xlsx";
+
+		try {
+
+			Map<String, String> mpGoogle = findColumn(file1);
+			Map<String, String> mapLooker = findColumn(file2);
+
+			Set<String> keySet1 = mpGoogle.keySet();
+			Set<String> keySet2 = mapLooker.keySet();
+
+			//Convert set to array for better traversing.
+			Object[] keyArr1 =keySet1.toArray();
+			Object[] keyArr2 =keySet2.toArray();
+
+			int matchedRecordCount =0;
+			int misMatchRecordCount =0;
+			int keyNotFound =0;
+			
+			//Below code will verify if individual record from Google sheet is avaialable in looker sheet and it is aviable then other columns are matching are not.
+			if(keyArr1.length == keyArr2.length) {
+				for (int m=0;m<keyArr1.length;m++)
+				{
+					for (int n=0;n<keyArr2.length;n++)
 					{
-						for (int n=0;n<ka2.length;n++)
+						if(keyArr1[m].equals(keyArr2[n]))
 						{
-							if(ka1[m].equals(ka2[n]))
+							if(mpGoogle.get(keyArr1[m]).equals(mapLooker.get(keyArr2[n])))
 							{
-								if(mapArr1.get(ka1[m]).equals(mapArr2.get(ka2[n])))
-								{
-									k++;
-								}
-							else {
-								arr3.add("For Key -"+(String) (ka1[m])+" Data in Google Sheet data is - "+mapArr1.get(ka1[m]).toString()+" And in Looker Sheet data is - "+mapArr2.get(ka2[n]).toString());
-							}}else {
-								l=(mapArr1.size()-(k+1));
+								matchedRecordCount++;
 							}
-						}
+							else {
+								outputArray.add("For Key -"+(String) (keyArr1[m])+" Data in Google Sheet data is - "+mpGoogle.get(keyArr1[m]).toString()+" And in Looker Sheet data is - "+mapLooker.get(keyArr2[n]).toString());
+							}}else {
+								misMatchRecordCount=(mpGoogle.size()-(matchedRecordCount+1));
+							}
 					}
-					}else {
-						System.out.println("Total Number of records in Google sheet - "+ka1.length);
-						System.out.println("Total Number of records in Looker sheet - "+ka2.length);
-					}
-				System.out.println("Total number of mismatched records -" + l);
-				System.out.println("Total number of matched records -" + k);
-				
-				WriteDataToExcel(arr3);
-				  
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
+				}
+			}else {
+				System.out.println("Total Number of records in Google sheet - "+keyArr1.length);
+				System.out.println("Total Number of records in Looker sheet - "+keyArr2.length);
 			}
-			
+			System.out.println("Total number of mismatched records -" + misMatchRecordCount);
+			System.out.println("Total number of matched records -" + matchedRecordCount);
 
+			//Below loop will verify if any key is not present in looker sheet.
+			for(int k =0;k<keyArr1.length;k++)
+			{
+				if(!keySet2.contains(keyArr1[k]))
+				{
+					outputArrayForKeyOnly.add("Key - "+(String) (keyArr1[k])+" is not present in Looker Sheet.");
+				}
+			}
+			//This will write data into excel. 
+			WriteDataToExcel(outputArray, outputArrayForKeyOnly);
+
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 
-		private static Map<String, String> findColumn(String filePath) throws IOException, ParseException
+
+	}
+
+	private static Map<String, String> findColumn(String filePath) throws IOException, ParseException
+	{
+		Map<String, String> myMap1 = new HashMap<>();
+		FileInputStream file = new FileInputStream(new File(filePath));
+
+		//Below arrays will capture the values from sheet for respective columns.
+		ArrayList compColArr = new ArrayList();
+		ArrayList totalImpressionArr = new ArrayList();
+		ArrayList totalClicksArr = new ArrayList();
+		ArrayList totalCostArr = new ArrayList();
+		ArrayList dateArr = new ArrayList();
+
+		//subMap will be used to capture the values of other than "Comparison column".
+		Map<Object, String> subMap = new HashMap<>();
+
+		// Get the workbook instance for XLSX file
+		@SuppressWarnings("resource")
+		XSSFWorkbook workbook1 = new XSSFWorkbook(file);
+
+		// Get only first sheet from the workbook
+		XSSFSheet sheet1 = workbook1.getSheetAt(0);
+
+		//Below for loop will capture the values of each collumns[e.g. comparision column] and add the values into respective arrays[eg compColArr] 
+		for (int i =0;i<sheet1.getRow(0).getPhysicalNumberOfCells();i++)
 		{
-			Map<String, String> myMap1 = new HashMap<>();
-			FileInputStream file = new FileInputStream(new File(filePath));
-			ArrayList arr = new ArrayList();
-			ArrayList arr1 = new ArrayList();
-			ArrayList arr2 = new ArrayList();
-			ArrayList arr3 = new ArrayList();
-			ArrayList arr4 = new ArrayList();
-			Map<Object, String> subMap = new HashMap<>();
-			
-			List subArr = new ArrayList<String>();
-			// Get the workbook instance for XLSX file
-			XSSFWorkbook workbook1 = new XSSFWorkbook(file);
-
-			// Get only first sheet from the workbook
-			XSSFSheet sheet1 = workbook1.getSheetAt(0);
-
-			
-			// Get iterator to all the rows in current sheet1ZZ
-			Iterator<Row> rowIterator1 = sheet1.iterator();
-			//System.out.println(sheet1.getRow(0).getPhysicalNumberOfCells());
-			String a = null;
-			String b =  null;
-			for (int i =0;i<sheet1.getRow(0).getPhysicalNumberOfCells();i++)
+			switch(sheet1.getRow(0).getCell(i).getStringCellValue())
 			{
-				//if(sheet1.getRow(0).getCell(i).getStringCellValue().equals("Comparison column") && sheet1.getRow(0).getCell(1).getStringCellValue().equals("AdWords AdGroup Total Impressions"))
-				switch(sheet1.getRow(0).getCell(i).getStringCellValue())
+			case "Comparison column":
+				compColArr = addValuesToArray(sheet1, i);
+				break;
+			case "AdWords AdGroup Total Impressions":
+				totalImpressionArr = addValuesToArray(sheet1, i);
+				break;
+			case "AdWords AdGroup Total Clicks":
+				totalClicksArr = addValuesToArray(sheet1, i);
+				break;
+			case "AdWords AdGroup Total Cost":
+				totalCostArr = addValuesToArray(sheet1, i);
+				break;
+			case "Date" :
+				dateArr = addDateValueToArray(sheet1, i);
+			}
+		}
+
+		//Below code will put the values in map.
+		for (int j =0;j<sheet1.getLastRowNum();j++) {
+			// Below line of code will add valued of other than "Comparison column" in "subMap" map.
+			subMap.put(totalImpressionArr.get(j), (totalImpressionArr.get(j).toString().concat(", "+ totalClicksArr.get(j).toString().concat(", "+ totalCostArr.get(j).toString()))));
+			//Below code will add values in map [eg - comparison column as a key and other columns value as a values]
+			myMap1.put( (String) compColArr.get(j).toString().concat(dateArr.get(j).toString()), subMap.get(totalImpressionArr.get(j)));
+			subMap.clear();
+		}
+		return myMap1;
+	}
+
+	//Below method will add values to arraylist from excel sheet
+	public static ArrayList<String> addValuesToArray(XSSFSheet sheetName, int k) {
+		ArrayList<String> arrayListValues = new ArrayList<String>();
+		int j =0;
+		int i = k;
+		{
+			for(j=1;j<sheetName.getLastRowNum()+1;j++)
+			{
+				switch (sheetName.getRow(j).getCell(i).getCellType())
 				{
-					case "Comparison column":
-						arr = addValueToHashMap(sheet1, i);
-						break;
-					case "AdWords AdGroup Total Impressions":
-						arr1 = addValueToHashMap(sheet1, i);
-						break;
-					case "AdWords AdGroup Total Clicks":
-						arr2 = addValueToHashMap(sheet1, i);
-						break;
-					case "AdWords AdGroup Total Cost":
-						arr3 = addValueToHashMap(sheet1, i);
-						break;
-					case "Date" :
-						arr4 = addDateValueToHashMap(sheet1, i);
+				case NUMERIC:
+					DataFormatter formatter = new DataFormatter();
+					String val = formatter.formatCellValue(sheetName.getRow(j).getCell(i));
+					arrayListValues.add(val);
+					break;
+				case STRING:
+					arrayListValues.add(sheetName.getRow(j).getCell(i).getStringCellValue());
+					break;
+				case BOOLEAN:
+					arrayListValues.add(sheetName.getRow(j).getCell(i).getStringCellValue());
+					break;
+				default:
+					break;	
+
 				}
 			}
-			
-
-			for (int j =0;j<sheet1.getLastRowNum();j++) {
-				//subArr= arr.subList(1, 4);
-				//arr4 = {arr1.get(j),arr2.get(j), arr3.get(j)};
-				subMap.put(arr1.get(j), (arr1.get(j).toString().concat(", "+ arr2.get(j).toString().concat(", "+ arr3.get(j).toString()))));
-				myMap1.put( (String) arr.get(j).toString().concat(arr4.get(j).toString()), subMap.get(arr1.get(j)));
-				subMap.clear();
-			}
-			return myMap1;
-			
 		}
-		
-		public static ArrayList addValueToHashMap(XSSFSheet sheetName, int k) {
-			Map<String, List> myMap = new HashMap<>();
-			ArrayList ar = new ArrayList<String>();
-			int j =0;
-			int i = k;
+		return arrayListValues;
+	}
+
+
+	//Below method will add values to arraylist from excel sheet
+	public static ArrayList<String> addDateValueToArray(XSSFSheet sheet1, int k) throws ParseException {
+		ArrayList<String> arrayDateListValue = new ArrayList<String>();
+		int i = k;
+		{
+			for(int j=1;j<sheet1.getLastRowNum()+1;j++)
 			{
-				for(j=1;j<sheetName.getLastRowNum()+1;j++)
+				switch (sheet1.getRow(j).getCell(i).getCellType())
 				{
-					//System.out.println(j);
-					switch (sheetName.getRow(j).getCell(i).getCellType())
-					{
-					case NUMERIC:
-						DataFormatter formatter = new DataFormatter();
-						String val = formatter.formatCellValue(sheetName.getRow(j).getCell(i));
-						ar.add(val);
-						break;
-					case STRING:
-						ar.add(sheetName.getRow(j).getCell(i).getStringCellValue());
-						break;
-					case BOOLEAN:
-						ar.add(sheetName.getRow(j).getCell(i).getStringCellValue());
-						break;	
-						
-					}
+				case STRING:
+					DateFormat outputFormat = new SimpleDateFormat("ddMMM", Locale.ENGLISH);
+					String inputText = sheet1.getRow(j).getCell(i).getStringCellValue();
+					Date date=new SimpleDateFormat("dd/MM/yyyy").parse(inputText); 
+					String outputText = outputFormat.format(date);
+					arrayDateListValue.add(outputText);
+					break;
+				default:
+					break;
+
 				}
 			}
-			return ar;
+		}
+		return arrayDateListValue;
+	}
+
+
+	//Below code will writ output to excel sheet.
+	public static void  WriteDataToExcel(List<String> outputarr1, List<String> outputarr2) throws IOException {
+		//Create blank workbook
+		@SuppressWarnings("resource")
+		XSSFWorkbook workbook = new XSSFWorkbook();
+
+		//Create a blank sheets
+		XSSFSheet spreadsheet = workbook.createSheet( "Employee Info ");
+
+		//Create row object
+		XSSFRow row;
+
+		//Iterate over data and write to sheet for mismatch keys + srecords in first column
+		int rowid = 0;
+		for (int i =0; i<outputarr1.size(); i++) {
+			int cellid = 0;
+			row = spreadsheet.createRow(rowid++);
+			Cell cell = row.createCell(cellid++);
+			cell.setCellValue((String) outputarr1.get(i));
 		}
 		
-		
-		public static ArrayList addDateValueToHashMap(XSSFSheet sheet1, int k) throws ParseException {
-			Map<String, List> myMap = new HashMap<>();
-			ArrayList ar = new ArrayList<String>();
-			int i = k;
-			{
-				for(int j=1;j<sheet1.getLastRowNum()+1;j++)
-				{
-					switch (sheet1.getRow(j).getCell(i).getCellType())
-					{
-					case STRING:
-						DateFormat outputFormat = new SimpleDateFormat("ddMMM", Locale.ENGLISH);
-						DateFormat inputFormat = new SimpleDateFormat("DD/MM/YYYY", Locale.ENGLISH);
-
-						String inputText = sheet1.getRow(j).getCell(i).getStringCellValue();
-						Date date=new SimpleDateFormat("dd/MM/yyyy").parse(inputText); 
-						String outputText = outputFormat.format(date);
-						ar.add(outputText);
-						break;
-						
-					}
-				}
-			}
-			return ar;
+		//Iterate over data and write to sheet for mismatch keys only in second column
+		int rowid2 = outputarr1.size();
+		for (int i =0; i<outputarr2.size(); i++) {
+			int cellid = 0;
+			row = spreadsheet.createRow(rowid2++);
+			Cell cell = row.createCell(cellid++);
+			cell.setCellValue((String) outputarr2.get(i));
 		}
 		
-		
-		
-		//Store data to HashMap
-		private static  Map<String, List> StoreArraysToHashMap(String path, int columnNum) throws IOException {
-			FileInputStream file = new FileInputStream(new File(path));
-			ArrayList arr = new ArrayList();
-			// Get the workbook instance for XLSX file
-			XSSFWorkbook workbook1 = new XSSFWorkbook(file);
+		//Write the workbook in file system
+		FileOutputStream out = new FileOutputStream(
+				new File("C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Writesheet1.xlsx"));
 
-			// Get only first sheet from the workbook
-			XSSFSheet sheet1 = workbook1.getSheetAt(0);
-
-			
-			// Get iterator to all the rows in current sheet1ZZ
-			Iterator<Row> rowIterator1 = sheet1.iterator();
-			
-			Map<String, List> myMap = new HashMap<>();
-			Row row = rowIterator1.next();
-			// For each row, iterate through all the columns
-			Iterator<Cell> cellIterator1 = row.cellIterator();
-			Cell cell = cellIterator1.next();
-			if(sheet1.getRow(0).getCell(0).getStringCellValue().equals("Comparison column") && sheet1.getRow(0).getCell(1).getStringCellValue().equals("AdWords AdGroup Total Impressions"))
-			{
-				for(int i =0; i<1;i++)
-				{
-					for(int j=1;j<sheet1.getLastRowNum();j++)
-					{
-						ArrayList ar = new ArrayList<String>();
-						List subArr = new ArrayList<String>();
-						switch (sheet1.getRow(j).getCell(i).getCellType())
-						{
-						case NUMERIC:
-							ar.add(sheet1.getRow(j).getCell(i).getStringCellValue());
-							break;
-						case STRING:
-							ar.add(sheet1.getRow(j).getCell(i).getStringCellValue());
-							DataFormatter formatter = new DataFormatter();
-							String val = formatter.formatCellValue(sheet1.getRow(j).getCell(++i));
-							ar.add(val);
-							i--;
-							break;
-						case BOOLEAN:
-							ar.add(sheet1.getRow(j).getCell(i).getStringCellValue());
-							break;	
-						}
-						
-						ar.add("f");
-						subArr= ar.subList(1, 2);
-						myMap.put( ar.get(0).toString(), subArr);
-						//System.out.println("@@@@"+myMap);
-						
-					}
-				}
-				//for(Map.Entry m : myMap.entrySet()){    
-				 //   System.out.println(m.getKey()+" "+m.getValue());    
-				//}
-				//System.out.println("--"+myMap.size());
-				file.close();
-			}
-			return myMap;
-		}
-		
-		public static void  WriteDataToExcel(List<String> arr3) throws IOException {
-			 //Create blank workbook
-		      XSSFWorkbook workbook = new XSSFWorkbook();
-		      
-		      //Create a blank sheets
-		      XSSFSheet spreadsheet = workbook.createSheet( "Employee Info ");
-
-		      //Create row object
-		      XSSFRow row;
-
-		      //Iterate over data and write to sheet
-		      int rowid = 0;
-		      
-		      for (int i =0; i<arr3.size(); i++) {
-		    	  int cellid = 0;
-		         row = spreadsheet.createRow(rowid++);
-		            Cell cell = row.createCell(cellid++);
-		            cell.setCellValue((String) arr3.get(i));
-		      }
-		      //Write the workbook in file system
-		      FileOutputStream out = new FileOutputStream(
-		         new File("C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Writesheet1.xlsx"));
-		      
-		      workbook.write(out);
-		      out.close();
-		      System.out.println("Writesheet.xlsx written successfully");
-		      //System.out.println("arr3 list values, here arr1 has some values which arr2 DOES NOT have : " + arr3);
-			   }
-		
+		workbook.write(out);
+		out.close();
+		System.out.println("Writesheet.xlsx written successfully");
+	}
 }

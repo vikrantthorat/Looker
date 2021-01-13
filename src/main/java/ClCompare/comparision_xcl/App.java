@@ -1,5 +1,5 @@
 /**
- * This code will compare the values from Google file and Looker file to generate the output for mismatch records and mismatch keys.
+ * This code will compare the values from Google file and Looker file to generate the output for mismatch records.
  */
 
 package ClCompare.comparision_xcl;
@@ -36,8 +36,12 @@ public class App {
 		outputArray.add("*************Mismatched records******************");
 
 		//Below List of array will capture the mismatch primary keys only and put it in output excel sheet.
-		List<String> outputArrayForKeyOnly = new ArrayList<String>();
-		outputArrayForKeyOnly.add("*************Key present in google file but not in Looker file******************");
+		List<String> outputArrayForGoogleKeyOnly = new ArrayList<String>();
+		outputArrayForGoogleKeyOnly.add("*************Key present in google file but not in Looker file******************");
+		
+		//Below List of array will capture the mismatch primary keys only and put it in output excel sheet.
+		List<String> outputArrayForlookerKeyOnly = new ArrayList<String>();
+		outputArrayForlookerKeyOnly.add("*************Key present in Looker file but not in Google file******************");
 				
 		String file1 ="C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Google - 26K.xlsx";
 		String file2 = "C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Looker - 26K.xlsx";
@@ -59,7 +63,7 @@ public class App {
 			int keyNotFound =0;
 			
 			//Below code will verify if individual record from Google sheet is avaialable in looker sheet and it is aviable then other columns are matching are not.
-			if(keyArr1.length == keyArr2.length) {
+			if(keyArr1.length > keyArr2.length || keyArr1.length == keyArr2.length) {
 				for (int m=0;m<keyArr1.length;m++)
 				{
 					for (int n=0;n<keyArr2.length;n++)
@@ -77,6 +81,29 @@ public class App {
 							}
 					}
 				}
+				System.out.println("Total Number of records in Google sheet - "+keyArr1.length);
+				System.out.println("Total Number of records in Looker sheet - "+keyArr2.length);
+			}else if(keyArr1.length < keyArr2.length) {
+				for (int m=0;m<keyArr2.length;m++)
+				{
+					for (int n=0;n<keyArr1.length;n++)
+					{
+						if(keyArr2[m].equals(keyArr1[n]))
+						{
+							if(mapLooker.get(keyArr2[m]).equals(mpGoogle.get(keyArr1[n])))
+							{
+								matchedRecordCount++;
+							}
+							else {
+								outputArray.add("For Key -"+(String) (keyArr2[m])+" Data in Google Sheet data is - "+mpGoogle.get(keyArr1[n]).toString()+" And in Looker Sheet data is - "+mapLooker.get(keyArr2[m]).toString());
+							}
+						}else {
+							misMatchRecordCount=(mpGoogle.size()-(matchedRecordCount+1));
+						}
+					}
+				}
+				System.out.println("Total Number of records in Google sheet - "+keyArr1.length);
+				System.out.println("Total Number of records in Looker sheet - "+keyArr2.length);
 			}else {
 				System.out.println("Total Number of records in Google sheet - "+keyArr1.length);
 				System.out.println("Total Number of records in Looker sheet - "+keyArr2.length);
@@ -89,19 +116,30 @@ public class App {
 			{
 				if(!keySet2.contains(keyArr1[k]))
 				{
-					outputArrayForKeyOnly.add("Key - "+(String) (keyArr1[k])+" is not present in Looker Sheet.");
+					outputArrayForGoogleKeyOnly.add("Key - "+(String) (keyArr1[k])+" is not present in Looker Sheet.");
 				}
 			}
+			
+			//Below loop will verify if any key is not present in Google sheet.
+			for(int k =0;k<keyArr2.length;k++)
+			{
+				if(!keySet1.contains(keyArr2[k]))
+				{
+					if(!outputArrayForGoogleKeyOnly.contains("Key - "+(String) (keyArr2[k])+" is not present in Looker Sheet."))
+					{
+						outputArrayForlookerKeyOnly.add("Key - "+(String) (keyArr2[k])+" is not present in Google Sheet.");
+					}
+				}
+			}
+			
 			//This will write data into excel. 
-			WriteDataToExcel(outputArray, outputArrayForKeyOnly);
+			WriteDataToExcel(outputArray, outputArrayForGoogleKeyOnly,outputArrayForlookerKeyOnly);
 
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-
 	}
 
 	private static Map<String, String> findColumn(String filePath) throws IOException, ParseException
@@ -216,8 +254,8 @@ public class App {
 	}
 
 
-	//Below code will writ output to excel sheet.
-	public static void  WriteDataToExcel(List<String> outputarr1, List<String> outputarr2) throws IOException {
+	//Below code will write output to excel sheet.
+	public static void  WriteDataToExcel(List<String> outputarr1, List<String> outputarr2, List<String> outputarr3) throws IOException {
 		//Create blank workbook
 		@SuppressWarnings("resource")
 		XSSFWorkbook workbook = new XSSFWorkbook();
@@ -228,7 +266,7 @@ public class App {
 		//Create row object
 		XSSFRow row;
 
-		//Iterate over data and write to sheet for mismatch keys + srecords in first column
+		//Iterate over data and write to sheet for mismatch keys + records in first column
 		int rowid = 0;
 		for (int i =0; i<outputarr1.size(); i++) {
 			int cellid = 0;
@@ -237,7 +275,7 @@ public class App {
 			cell.setCellValue((String) outputarr1.get(i));
 		}
 		
-		//Iterate over data and write to sheet for mismatch keys only in second column
+		//Iterate over data and write to sheet for mismatch Google keys only in same column
 		int rowid2 = outputarr1.size();
 		for (int i =0; i<outputarr2.size(); i++) {
 			int cellid = 0;
@@ -245,7 +283,16 @@ public class App {
 			Cell cell = row.createCell(cellid++);
 			cell.setCellValue((String) outputarr2.get(i));
 		}
-		
+	
+		//Iterate over data and write to sheet for mismatch Google keys only in same column
+				int rowid3 = outputarr1.size()+outputarr2.size();
+				for (int i =0; i<outputarr3.size(); i++) {
+					int cellid = 0;
+					row = spreadsheet.createRow(rowid3++);
+					Cell cell = row.createCell(cellid++);
+					cell.setCellValue((String) outputarr3.get(i));
+				}
+				
 		//Write the workbook in file system
 		FileOutputStream out = new FileOutputStream(
 				new File("C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Writesheet1.xlsx"));
@@ -254,4 +301,5 @@ public class App {
 		out.close();
 		System.out.println("Writesheet.xlsx written successfully");
 	}
+
 }

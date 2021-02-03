@@ -43,8 +43,8 @@ public class App {
 		List<String> outputArrayForlookerKeyOnly = new ArrayList<String>();
 		outputArrayForlookerKeyOnly.add("*************Key present in Looker file but not in Google file******************");
 				
-		String file1 ="C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Google - 26K.xlsx";
-		String file2 = "C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Looker - 26K.xlsx";
+		String file1 ="C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Google1.xlsx";
+		String file2 = "C:\\Users\\Dell\\Desktop\\Docs\\Looker\\Looker.xlsx";
 
 		try {
 
@@ -167,21 +167,21 @@ public class App {
 		//Below for loop will capture the values of each collumns[e.g. comparision column] and add the values into respective arrays[eg compColArr] 
 		for (int i =0;i<sheet1.getRow(0).getPhysicalNumberOfCells();i++)
 		{
-			switch(sheet1.getRow(0).getCell(i).getStringCellValue())
+			switch(sheet1.getRow(0).getCell(i).getStringCellValue().toLowerCase())
 			{
-			case "Comparison column":
+			case "comparison column":
 				compColArr = addValuesToArray(sheet1, i);
 				break;
-			case "AdWords AdGroup Total Impressions":
+			case "adwords adgroup total impressions":
 				totalImpressionArr = addValuesToArray(sheet1, i);
 				break;
-			case "AdWords AdGroup Total Clicks":
+			case "adwords adgroup total clicks":
 				totalClicksArr = addValuesToArray(sheet1, i);
 				break;
-			case "AdWords AdGroup Total Cost":
+			case "adwords adgroup total cost":
 				totalCostArr = addValuesToArray(sheet1, i);
 				break;
-			case "Date" :
+			case "date" :
 				dateArr = addDateValueToArray(sheet1, i);
 			}
 		}
@@ -240,7 +240,7 @@ public class App {
 				case STRING:
 					DateFormat outputFormat = new SimpleDateFormat("ddMMM", Locale.ENGLISH);
 					String inputText = sheet1.getRow(j).getCell(i).getStringCellValue();
-					Date date=new SimpleDateFormat("dd/MM/yyyy").parse(inputText); 
+					Date date=new SimpleDateFormat("dd/mm/yyyy").parse(inputText); 
 					String outputText = outputFormat.format(date);
 					arrayDateListValue.add(outputText);
 					break;
